@@ -15,6 +15,7 @@ fn main() {
 enum ImportType {
     Std,
     External,
+    WorkspaceCrates,
     Crate,
 }
 
@@ -35,7 +36,19 @@ fn is_import(line: &str) -> Option<ImportType> {
         } else if line.contains(" crate::") || line.contains(" self::") {
             Some(ImportType::Crate)
         } else {
-            Some(ImportType::External)
+            // TODO Don't hardcode this list
+            if line.contains("abstutil::")
+                || line.contains("convert_osm::")
+                || line.contains("geom::")
+                || line.contains("kml::")
+                || line.contains("map_model::")
+                || line.contains("sim::")
+                || line.contains("widgetry::")
+            {
+                Some(ImportType::WorkspaceCrates)
+            } else {
+                Some(ImportType::External)
+            }
         }
     } else {
         None
@@ -48,6 +61,7 @@ fn fix_imports(path: String) {
     let mut output = Vec::new();
     let mut std_imports = Vec::new();
     let mut external_imports = Vec::new();
+    let mut workspace_crate_imports = Vec::new();
     let mut crate_imports = Vec::new();
     let mut section = Section::RestOfFile;
     for line in BufReader::new(File::open(&path).unwrap()).lines() {
@@ -70,6 +84,9 @@ fn fix_imports(path: String) {
                         ImportType::External => {
                             external_imports.push(line);
                         }
+                        ImportType::WorkspaceCrates => {
+                            workspace_crate_imports.push(line);
+                        }
                         ImportType::Crate => {
                             crate_imports.push(line);
                         }
@@ -84,6 +101,10 @@ fn fix_imports(path: String) {
                     }
                     if !external_imports.is_empty() {
                         output.extend(external_imports.drain(..));
+                        output.push("".to_string());
+                    }
+                    if !workspace_crate_imports.is_empty() {
+                        output.extend(workspace_crate_imports.drain(..));
                         output.push("".to_string());
                     }
                     if !crate_imports.is_empty() {
@@ -106,6 +127,9 @@ fn fix_imports(path: String) {
                     ImportType::External => {
                         external_imports.push(line);
                     }
+                    ImportType::WorkspaceCrates => {
+                        workspace_crate_imports.push(line);
+                    }
                     ImportType::Crate => {
                         crate_imports.push(line);
                     }
@@ -126,6 +150,10 @@ fn fix_imports(path: String) {
         }
         if !external_imports.is_empty() {
             output.extend(external_imports.drain(..));
+            output.push("".to_string());
+        }
+        if !workspace_crate_imports.is_empty() {
+            output.extend(workspace_crate_imports.drain(..));
             output.push("".to_string());
         }
         if !crate_imports.is_empty() {
